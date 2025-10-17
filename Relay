@@ -90,7 +90,7 @@ int main(void)
 		if(state == 1){
 			current_time = millis();
 			
-			if((previous_time-current_time) > T){
+			if((current_time-previous_time) > T){
 				
 				state=0;
 				PORTB &= ~0x01;
