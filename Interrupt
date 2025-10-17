@@ -1,0 +1,58 @@
+#define F_CPU 16000000L
+#include <avr/io.h>
+#include <util/delay.h>
+#include <avr/interrupt.h>
+
+volatile int state = 0;
+
+ISR(INT0_vect)
+{
+    state = (state + 1) % 2;
+}
+
+char circular_shift_left(char pattern, int n)
+{
+	return (pattern << n) | ( pattern >> (8-n));
+}
+
+char circular_shift_right(char pattern, int n)
+{
+	return (pattern >> n) | ( pattern << (8-n)) ;
+}
+
+void INIT_PORT(void)
+{
+	DDRB = 0xFF;
+	PORTB = 0x01;
+	
+	DDRD = 0x00;
+}
+
+void INIT_INT0(void)
+{
+	EIMSK |= (1 << INT0);
+	EICRA |= (1 << ISC00) | (1 << ISC01);
+	sei();
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	INIT_PORT();
+	INIT_INT0();
+		
+    while (1) 
+    {	
+		if(state == 0){
+			PORTB = circular_shift_left(PORTB, 1);
+		}
+		
+		else if(state == 1){
+			PORTB = circular_shift_right(PORTB, 1);
+		}
+		
+		_delay_ms(500);
+    }
+	
+	return 0;
+}
