@@ -1,0 +1,67 @@
+#define F_CPU 16000000L
+#define COL_OUT PORTB
+#define ROW_IN PINB
+
+#include <avr/io.h>
+#include <avr/sfr_defs.h>
+#include <util/delay.h>
+#include <stdio.h>
+#include "UART1.h"
+
+FILE OUTPUT = FDEV_SETUP_STREAM(UART1_transmit, NULL, _FDEV_SETUP_WRITE);
+FILE INPUT = FDEV_SETUP_STREAM(NULL, UART1_receive, _FDEV_SETUP_READ);
+
+uint8_t keystate[4][4];
+
+void read_key(void)
+{
+	for(int x=0 ; x<4 ; x++){
+		
+	
+		COL_OUT = ~(0x01 << x);
+		
+		_delay_ms(10);
+		
+		uint8_t read = ROW_IN >> 4;
+		
+		for(int y=0 ; y<4; y++){
+			if(read & (1 << y)) {
+				keystate[x][y] = 0;
+				
+			}
+			else{
+				keystate[x][y] = 1;
+			}
+		}
+	}
+}
+
+void print_key(void)
+{
+	for(int x=0 ; x<4 ; x++){
+		for(int y=0 ; y<4 ; y++){
+			printf("%c ", (keystate[y][x] ? 'O' : '.'));
+		}
+		printf("\r\n");
+	}
+	printf("\r\n\r\n");
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	DDRB = 0x0F;
+	
+	stdout=&OUTPUT;
+	stdin=&INPUT;
+	
+	UART1_init();
+	
+    while (1) 
+    {
+		read_key();
+		print_key();
+		
+		_delay_ms(1000);
+    }
+}
