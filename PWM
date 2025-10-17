@@ -1,0 +1,106 @@
+#define F_CPU 16000000L
+
+#define MILLIS_INCREMENT_PER_OVERFLOW 1
+#define MICROS_INCREMENT_PER_OVERFLOW 24
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+
+#define LED_TIME 20
+
+unsigned long timer0_millis = 0;
+int timer0_micros = 0;
+
+ISR(TIMER0_OVF_vect)
+{
+	unsigned long m = timer0_millis;
+	int f = timer0_micros;
+	
+	m += MILLIS_INCREMENT_PER_OVERFLOW;
+	f += MICROS_INCREMENT_PER_OVERFLOW;
+	
+	m += f / 1000;
+	f %= 1000;
+	
+	timer0_millis = m;
+	timer0_micros = f;
+}
+
+unsigned long millis(void)
+{
+	unsigned long m = timer0_millis;
+	uint8_t oldSREG = SREG;
+	
+	cli();
+	
+	m= timer0_millis;
+	
+	SREG = oldSREG;
+	
+	return m;
+}
+
+void ADC_init(unsigned char channel)
+{
+	ADMUX |= (1 << REFS0);
+	ADMUX = ((ADMUX & 0xE0) | channel);
+	
+	ADCSRA |= (1 << ADEN);
+	ADCSRA |= (1 << ADFR);
+	ADCSRA |= (1 << ADSC);
+	
+	ADCSRA |= 0x07;
+}
+
+int read_ADC(void)
+{
+	while(!(ADCSRA & (1 << ADIF)));
+	
+	return ADC;
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	int dim = 0, direction = 1;
+	unsigned long time_current, time_previous;
+	int read;
+	
+	DDRB |= (1 << PORTB5) | (1 << PORTB6);
+	
+	TCCR0 |= (1 << CS02);
+	TIMSK |= (1 << TOIE0);
+	sei();
+	
+	TCCR1A |= (1 << WGM10);
+	TCCR1A |= (1 << COM1A1);
+	TCCR1A |= (1 << COM1B1) | (1 << COM1B0);
+	
+	TCCR1B|= (1 << CS12);
+	
+	ADC_init(0);
+	
+	time_previous = millis();
+	
+    while (1) 
+    {
+		OCR1A = dim;
+        OCR1B = dim;
+		
+		read = read_ADC() * 9 / 1024 + 1;
+		time_current = millis();
+		
+		if(time_current - time_previous > read){
+		dim += direction;
+		time_previous = time_current;
+		}
+		
+		
+		if(dim == 0) direction = 1;
+		if(dim == 255) direction = -1;
+		
+    }
+	
+	return 0;
+}
