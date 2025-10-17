@@ -1,0 +1,106 @@
+#define F_CPU 16000000L
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+#include <stdio.h>
+#include "UART1.h"
+
+#define MILLIS_INCREMENT_PER_OVERFLOW 1
+#define MICROS_INCREMENT_PER_OVERFLOW 24
+
+volatile unsigned long timer0_millis = 0;
+volatile int timer0_micros = 0;
+
+FILE OUTPUT = FDEV_SETUP_STREAM(UART1_transmit, NULL, _FDEV_SETUP_WRITE);
+FILE INPUT = FDEV_SETUP_STREAM(NULL, UART1_receive, _FDEV_SETUP_READ);
+
+ISR(TIMER0_OVF_vect)
+{
+	unsigned long m = timer0_millis;
+	int f = timer0_micros;
+	
+	m += MILLIS_INCREMENT_PER_OVERFLOW;
+	f += MICROS_INCREMENT_PER_OVERFLOW;
+	
+	m += f / 1000;
+	f %= 1000;
+	
+	timer0_millis = m;
+	timer0_micros = f;
+}
+
+unsigned long millis(void)
+{
+	unsigned long m;
+	uint8_t oldSREG = SREG;
+	
+	cli();
+	m=timer0_millis;
+	
+	SREG = oldSREG;
+	
+	return m;
+}
+
+void Timer0_init(void)
+{
+	TCCR0 |= (1 < CS02);
+	TIMSK |= (1 << TOIE0);
+	sei();
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	DDRB |= 0x01;
+	PORTB = 0x00;
+	
+	DDRC = 0x00;
+	
+	UART1_init();
+	Timer0_init();
+	
+	stdout=&OUTPUT;
+	stdin=&INPUT;
+	
+	unsigned long T=2000;
+	unsigned long current_time = 0, previous_time = 0;
+	int state = 0;
+    while (1) 
+    {
+			
+		if(PINC & 0x01){
+		previous_time = millis();
+		state = 1;
+		PORTB |= 0x01;
+		printf("Switched ON\r\n");
+		_delay_ms(20);
+		
+		}
+		
+		
+		else if(PINC & 0x02){
+			state = 0;
+			PORTB &= ~0x01;
+			printf("Switched OFF\r\n");
+			_delay_ms(20);
+		}
+		
+		if(state == 1){
+			current_time = millis();
+			
+			if((previous_time-current_time) > T){
+				
+				state=0;
+				PORTB &= ~0x01;
+				printf("Automatically switched off after %d ms \r\n", T);
+			}
+		}
+		
+		
+		
+    }
+	
+	return 0;
+}
