@@ -1,0 +1,76 @@
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+#define MILLIS_INCREMENT_PER_OVERFLOW  1;
+#define MICROS_INCREMENT_PER_OVERFLOW  24;
+
+volatile unsigned long timer0_millis = 0;
+volatile int timer0_micros = 0;
+
+char circular_shift_left(char pattern, int n)
+{
+	return (pattern << n) | (pattern >> (8-n));
+}
+
+ISR(TIMER0_OVF_vect)
+{
+	unsigned long m = timer0_millis;
+	int f = timer0_micros;
+	
+	m += MILLIS_INCREMENT_PER_OVERFLOW;
+	f += MICROS_INCREMENT_PER_OVERFLOW;
+	
+	m += f / 1000;
+	f %= 1000;
+	
+	timer0_millis = m;
+	timer0_micros = f; 
+}
+
+unsigned long millis(void)
+{
+	unsigned long m = timer0_millis;
+	uint8_t oldSREG = SREG;
+	
+	cli();
+	
+	m= timer0_millis;
+	
+	SREG = oldSREG;
+	
+	return m;
+}
+
+void init_timer0(void)
+{
+	TCCR0 |= (1 << CS01) | (1 << CS00);
+	TIMSK |= (1 << TOIE0);
+	
+	sei();
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	
+	
+	DDRB = 0xFF; 
+	PORTB = 0x01;
+	
+	init_timer0();
+	
+	unsigned long time_current, time_previous;
+	time_previous = millis();
+	
+    while (1) 
+    {
+		time_current = millis();
+		
+		if( (time_current - time_previous) > 500){
+		PORTB = circular_shift_left(PORTB, 1);
+		time_previous = time_current;
+		}
+    }
+	
+	return 0;
+}
