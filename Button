@@ -1,0 +1,18 @@
+#define F_CPU 16000000L
+#include <avr/io.h>
+#include <util/delay.h>
+
+
+int main(void)
+{
+	DDRB |= 0x07;
+	DDRF &= ~0x07;
+	PORTF |= 0x01;
+    /* Replace with your application code */
+    while (1) 
+    {
+		PORTB = (PORTB & 0xF8) + (PINF & 0x07);
+    }
+	
+	return 0;
+}
