@@ -1,0 +1,41 @@
+#include <avr/io.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "UART1.h"
+
+FILE OUTPUT = FDEV_SETUP_STREAM(UART1_transmit, NULL, _FDEV_SETUP_WRITE);
+FILE INPUT = FDEV_SETUP_STREAM(NULL, UART1_receive, _FDEV_SETUP_READ);
+
+int main(void)
+{
+    /* Replace with your application code */
+	uint8_t data;
+	char buffer[4];
+	int num, index=0;
+	
+	
+	stdout=&OUTPUT;
+	stdin=&INPUT;
+	
+	DDRC = 0xFF;
+	UART1_init();
+	
+    while (1) 
+    {
+		scanf("%c", &data);
+		
+		if(data == '\r'){
+			buffer[index++] = 0;
+			index=0;
+			num = atoi(buffer);
+			PORTC = num;
+		}
+		
+		else {
+			buffer[index++] = data;
+			}
+		
+    }
+	
+	return 0;
+}
