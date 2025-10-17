@@ -1,0 +1,74 @@
+#define F_CPU 16000000L
+#include <avr/io.h>
+#include <util/delay.h>
+#include <stdio.h>
+#include "UART1.h"
+
+FILE OUTPUT = FDEV_SETUP_STREAM(UART1_transmit, NULL, _FDEV_SETUP_WRITE);
+FILE INPUT = FDEV_SETUP_STREAM(NULL, UART1_receive, _FDEV_SETUP_READ);
+
+void ADC_init(unsigned char channel)
+{
+	ADMUX |= (1 << REFS0);
+	
+	ADCSRA |= 0x07;
+	ADCSRA |= (1 << ADEN);
+	ADCSRA |= (1 << ADFR);
+	
+	ADMUX = ((ADMUX & 0x01) | channel);
+	ADCSRA |= (1 << ADSC);
+}
+
+int read_ADC(void)
+{
+	while(!(ADCSRA & (1 << ADIF)));
+	
+	return ADC;
+}
+ 
+void Comparator_init(void)
+{
+	ACSR |= (1 << ACBG);
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	int read, state;
+	float voltage;
+	
+	stdout = &OUTPUT;
+	stdin = & INPUT;
+	
+	UART1_init();
+	ADC_init(0);
+	Comparator_init();
+	
+	SFIOR |= (1<<ACME);
+	ADCSRA &= ~(1<<ADEN);
+	ADMUX |= 0x01;
+	
+	DDRB |= 0x01;
+	
+    while (1) 
+    {
+		read=read_ADC();
+		voltage=read*5/1024.0;
+		
+		uint8_t mask = (1<<ACO);
+		
+		if((ACSR & mask)== mask){
+			state=1;
+			PORTB |= 0x01;
+		}
+		else{
+			state=0;
+			PORTB &= ~0x01;
+		}
+		
+		printf("Voltage is %f, \t LED is %s !! \r\n", voltage, (state == 1) ? "ON" : "OFF");
+		
+		_delay_ms(1000);
+	}
+	return 0;
+}
