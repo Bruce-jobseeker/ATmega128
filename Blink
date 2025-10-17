@@ -1,0 +1,51 @@
+#define F_CPU 16000000L
+#include <avr/io.h>
+#include <util/delay.h>
+
+char circular_shift_right(char pattern, int n)
+{
+	char new_pattern = ( pattern << (8-n) | pattern >> n);
+	
+	return new_pattern;
+}
+
+char circular_shift_left(char pattern, int n)
+{
+	char new_pattern = (pattern >> (8-n)) | (pattern << n);
+	
+	return new_pattern;
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+    
+	char pattern1 = 0x80;
+	char pattern2 = 0x01;
+	
+	char pattern;
+	int i=1;
+	DDRB = 0xFF;
+	
+	while (1) 
+    {
+		pattern = pattern1 | pattern2;
+		PORTB = pattern;
+		
+		if( i == 3 || i == 0){
+			pattern1 = circular_shift_right(pattern1, 2);
+			pattern2 = circular_shift_left(pattern2, 2);
+		}
+		else{
+			pattern1 = circular_shift_right(pattern1, 1);
+			pattern2 = circular_shift_left(pattern2, 1);
+		}
+		
+		i++;
+		i = i % 6;
+		
+		_delay_ms(500);
+    }
+	
+	return 0;
+}
