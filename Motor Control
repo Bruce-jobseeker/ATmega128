@@ -1,0 +1,71 @@
+#define F_CPU 16000000L
+
+#include <avr/io.h>
+#include <stdio.h>
+#include <util/delay.h>
+#include <avr/interrupt.h>
+#include "UART1.h"
+
+#define ROTATION_DELAY 1000
+#define PULSE_MIN 1300
+#define PULSE_MID 3000
+#define PULSE_MAX 4700
+
+FILE OUTPUT = FDEV_SETUP_STREAM(UART1_transmit, NULL, _FDEV_SETUP_WRITE);
+FILE INPUT = FDEV_SETUP_STREAM(NULL, UART1_receive, _FDEV_SETUP_READ);
+
+void InitializeTimer1(void)
+{
+	TCCR1A |= (1 << WGM11);
+	TCCR1B |= (1 << WGM12) | (1 << WGM13);
+	
+	TCCR1A |= (1 << COM1A1);
+	TCCR1B |= (1 << CS11);
+	
+	ICR1 = 39999;
+}
+
+void ADC_init(unsigned char channel)
+{
+	ADMUX |= (1 << REFS0);
+	ADCSRA |= 0x07;
+	ADCSRA |= (1 << ADEN);
+	ADCSRA |= (1 << ADFR);
+	
+	ADMUX = ((ADMUX & 0xE0) | channel);
+	ADCSRA |= (1 << ADSC);
+}
+
+int read_ADC(void)
+{
+	while(!(ADCSRA & (1 << ADIF)));
+	
+	return ADC;
+}
+
+
+int main(void)
+{
+    /* Replace with your application code */
+    DDRB = 0x20;
+	
+	InitializeTimer1();
+	ADC_init(0);
+	UART1_init();
+	
+	stdout=&OUTPUT;
+	stdin=&INPUT;
+	
+	OCR1A = PULSE_MIN;
+	
+	while (1) 
+    {
+		 int read = read_ADC();
+		 int position = read*3.3  + 1300;
+	     OCR1A = position;
+		 
+		 _delay_ms(100);
+	}
+	
+	return 0;
+}
