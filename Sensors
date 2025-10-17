@@ -1,0 +1,127 @@
+#define F_CPU 16000000L
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+#include <stdio.h>
+#include "UART1.h"
+
+FILE OUTPUT = FDEV_SETUP_STREAM(UART1_transmit, NULL, _FDEV_SETUP_WRITE);
+FILE INPUT = FDEV_SETUP_STREAM(NULL, UART1_receive, _FDEV_SETUP_READ);
+
+#define PRESCALER 1024
+
+#define MILLIS_INCREMENT_PER_OVERFLOW 1
+#define MICROS_INCREMENT_PER_OVERFLOW 24
+
+volatile unsigned long timer0_millis = 0;
+volatile int timer0_micros = 0;
+
+ISR(TIMER0_OVF_vect)
+{
+	unsigned long m = timer0_millis;
+	int f = timer0_micros;
+	
+	m+=MILLIS_INCREMENT_PER_OVERFLOW;
+	f+=MICROS_INCREMENT_PER_OVERFLOW;
+	
+	m = f/1000;
+	f%=1000;
+	
+	timer0_millis = m;
+	timer0_micros = f;
+}
+
+unsigned long millis(void)
+{
+	unsigned long m;
+	uint8_t oldSREG = SREG;
+	
+	cli();
+	
+	m=timer0_millis;
+	SREG = oldSREG;
+	
+	return m;
+}
+
+void ADC_init(unsigned char channel)
+{
+	ADMUX |= (1 << REFS0);
+	
+	ADCSRA |= 0x07;
+	ADCSRA |= (1 << ADEN);
+	ADCSRA |= (1 << ADFR);
+	
+	ADMUX |= ((ADMUX & 0xE0) | channel);
+	ADCSRA |= (1 << ADSC);
+}
+
+int read_ADC(void)
+{
+	while(!(ADCSRA & (1 << ADIF)));
+	
+	return ADC;
+}
+
+void Timer0_init(void)
+{
+	TCCR0 |= (1 << CS02);
+	TIMSK |= (1 << TOIE0);
+	
+	sei();
+}
+
+void Timer1_init(void)
+{
+	TCCR1B |= (1 << CS12) | (1 << CS10);
+}
+
+uint8_t measure_distance(void)
+{
+	PORTB &= ~(1 << PORTB1);
+	_delay_us(1);
+	PORTB |= (1 << PORTB1);
+	_delay_us(10);
+	PORTB &= ~(1 << PORTB1);
+	
+	TCNT1 = 0;
+	while(!(PINB & 0x01))
+	  if(TCNT1 > 65000) return 0;
+	  
+	TCNT1 = 0;
+	while(PINB & 0x01){
+		if(TCNT1 > 65000){
+			TCNT1 = 0;
+			break;
+		}
+	}
+	
+	double pulse_width = 1000000.0 * TCNT1 * PRESCALER / F_CPU;
+	
+	return pulse_width / 58;
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	int light, led;
+	
+	stdout=&OUTPUT;
+	stdin=&INPUT;
+	
+	ADC_init(5);
+
+    DDRC = 0xFF;
+	
+    while (1) 
+    {
+		light = read_ADC();
+		led = 8 - 8*(light-20)/80; 
+		
+		PORTC = (0x02 << led) -1;
+		
+		_delay_ms(1000);
+    }
+	
+	return 0;
+}
