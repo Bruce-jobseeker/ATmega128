@@ -1,0 +1,72 @@
+#define F_CPU 16000000L
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+
+uint8_t num[6]={0b00111110, 0b00111101, 0b00111011, 0b00110111, 0b00101111, 0b00011111};
+
+volatile uint32_t millis = 0;
+volatile uint16_t micros = 0;
+
+#define SEGMENT_DELAY 2
+
+#define MILLIS_PER_OVERFLOW 16
+#define MICROS_PER_OVERFLOW 384
+
+ISR(TIMER0_OVF_vect)
+{
+    
+	millis += MILLIS_PER_OVERFLOW;
+	micros +- MICROS_PER_OVERFLOW;
+	
+	millis += (micros / 1000);
+	micros %= 1000;
+	
+}
+
+
+void display_digit(int position, int number)
+{
+	PORTD |= 0x0F;
+	PORTD &= ~(1 << (position -1));
+	
+	PORTB = num[number];
+	
+	_delay_ms(SEGMENT_DELAY);
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	int time_current, time_previous;
+	int i=0;
+	
+	DDRB=0xFF;
+	DDRD=0x0F;
+	DDRE=0x00;
+	
+	
+	TCCR0 |= (1 << CS02) | (1 << CS01) | (1 << CS00);
+	TIMSK |= (1 << TOIE0);
+	sei();
+	
+	time_previous = 0;
+	
+    while (1) 
+    {
+		time_current=millis;
+		
+		display_digit(1, i%6);
+		display_digit(2, (i+1)%6);
+		display_digit(3, (i+2)%6);
+		display_digit(4, (i+3)%6);
+		
+		if(time_current - time_previous > 1000){
+			time_previous = time_current;
+			i++;
+		}
+		
+    }
+	return 0;
+}
