@@ -1,0 +1,49 @@
+#define F_CPU 16000000L
+
+#include <avr/io.h>
+#include <util/delay.h>
+
+#include "Text_LCD.h"
+
+#define LCD_SETCGRAMADDR0 0x40
+#define LCD_SETCGRAMADDR1 0x48
+
+uint8_t MODE = 8;
+
+uint8_t smile[] = {0b00000000, 0b00010001, 0b00000000, 0b00000000, 0b00010001, 0b00001110, 0b00000000, 0b00000000};
+uint8_t sad[] = {0b00000000, 0b00010001, 0b00000000, 0b00000000, 0b00001110, 0b00010001, 0b00000000, 0b00000000};
+
+int main(void)
+{
+    /* Replace with your application code */
+	LCD_init();
+	
+	LCD_write_command(LCD_SETCGRAMADDR0);
+	
+	for(int i=0 ; i<8 ; i++){
+		LCD_write_data(smile[i]);
+	}
+	
+	LCD_init();
+	
+	LCD_write_command(LCD_SETCGRAMADDR1);
+	
+	for(int j=0 ; j<8 ; j++){
+		LCD_write_data(sad[j]);
+	}
+	
+	LCD_init();
+	
+	LCD_write_data(0);
+	
+	LCD_goto_XY(1, 0);
+	LCD_write_data(1);
+	
+	
+    while (1) 
+    {
+		
+	}
+	
+	return 0;
+}
