@@ -1,0 +1,66 @@
+#define F_CPU 16000000L
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+#include <stdio.h>
+
+
+int state = 0;
+
+ISR(TIMER1_COMPA_vect)
+{
+	state++;
+	
+	if(state == 8){
+		state = 0;
+		PORTB = 0x01;
+	}
+	else PORTB = PORTB << 1;
+	
+}
+
+void ADC_init(unsigned char channel)
+{
+	ADMUX |= (1 << REFS0);
+	ADCSRA |= 0x07;
+	ADCSRA |= (1 << ADEN);
+	ADCSRA |= (1 << ADFR);
+	
+	ADMUX |= ((ADMUX & 0xE0) | channel);
+	ADCSRA |= (1 << ADSC);
+}
+
+int read_ADC(void)
+{
+	while(!(ADCSRA & (1 << ADIF)));
+	
+	return ADC;
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	DDRB = 0xFF;
+	PORTB = 0x01;
+	
+	ADC_init(0);
+	
+	
+	TCCR1B |= (1 << CS12);
+	
+	TIMSK |= (1 << OCIE1A);
+	
+	sei();
+	
+    while (1) 
+    {
+		int read = read_ADC();
+		
+		read = read * 62500  / 1024 + 6;
+		
+		OCR1A = read;
+		_delay_ms(100);
+    }
+	
+	return 0;
+}
