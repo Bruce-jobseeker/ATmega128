@@ -1,0 +1,83 @@
+#define F_CPU 16000000L
+
+#include <avr/io.h>
+#include <util/delay.h>
+#include <stdio.h>
+#include <avr/interrupt.h>
+
+#include "UART1.h"
+#include "I2C_RTC.h"
+
+FILE OUTPUT = FDEV_SETUP_STREAM(UART1_transmit, NULL, _FDEV_SETUP_WRITE);
+FILE INPUT = FDEV_SETUP_STREAM(NULL, UART1_receive, _FDEV_SETUP_READ);
+
+int i=0;
+
+uint8_t bcd_to_decimal(uint8_t bcd)
+{
+	return (bcd >> 4) * 10 + (bcd & 0x0F);
+}
+
+uint8_t decimal_to_bcd(uint8_t decimal)
+{
+	return  ((decimal / 10) << 4) | (decimal % 10) ;
+}
+
+void INIT_INT2(void)
+{
+	EIMSK |= (1 << INT2);
+	EICRA |= (1 << ISC21);
+	sei();
+}
+
+ISR(INT2_vect)
+{
+	PORTB = 0x01 << i;
+	i++;
+	if(i==8) i=0;
+}
+
+int get_second(uint8_t address)
+{
+	int second;
+	
+	I2C_start();
+	I2C_transmit(address << 1);
+	I2C_transmit(0);
+	I2C_stop();
+	
+	I2C_start();
+	I2C_transmit( (address << 1) +1);
+	second = I2C_receive_NACK();
+	
+	return second;
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	int state=0;
+	int current_second, previous_second;
+	uint8_t address=0x68;
+	
+	I2C_init();
+	
+	
+	DDRB = 0xFF;
+	PORTB = 0x00;
+	
+	previous_second=get_second(address);
+    while (1) 
+    {
+		current_second = get_second(address);
+		
+		if(current_second != previous_second){
+			previous_second = current_second;
+			state = (state+1) % 2;
+			PORTB = 0xFF * state;
+		}
+		
+    }
+	
+	return 0;
+}
