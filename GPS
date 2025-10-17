@@ -1,0 +1,85 @@
+#include <avr/io.h>
+#include <stdio.h>
+#include <string.h>
+#include "UART0.h"
+#include "UART1.h"
+
+FILE OUTPUT = FDEV_SETUP_STREAM(UART1_transmit, NULL, _FDEV_SETUP_WRITE);
+FILE INPUT = FDEV_SETUP_STREAM(NULL, UART1_receive, _FDEV_SETUP_READ);
+
+void extract_information(char *buffer)
+{
+	char delimeter[2] = ",";
+	char *token = strtok(buffer, delimeter);
+	
+	for(int i=0 ; i<6 ; i++)
+	{
+		switch(i){
+			case 0:
+			break;
+			
+			case 1:
+			printf("Time  : %s\r\n", token);
+			break;
+			
+			case 2:
+			printf("Latitude  : %s", token);
+			break;
+			
+			case 3:
+			printf("%s\r\n", token);
+			break;
+			
+			case 4:
+			printf("Longitude  : %s", token);
+			break;
+			
+			case 5:
+			printf("%s\r\n", token);
+			break;
+		}
+		
+		token = strtok(NULL, delimeter);
+	}
+}
+
+void process_data(char* buffer)
+{
+	if(strlen(buffer) < 6) return;
+	
+	if(strncmp(buffer, "$GPGGA", 6)==0){
+	extract_information(buffer);
+	}
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	uint8_t data, position=0;
+	char buffer[200];
+	
+	stdout=&OUTPUT;
+	stdin=&INPUT;
+	
+	UART0_init();
+	UART1_init();
+	
+	
+    while (1) 
+    {
+		data = UART0_receive();
+		
+		if(data == '\n'){
+			buffer[position++]=0;
+			position=0;
+			process_data(buffer);
+		}
+		
+		else{
+			buffer[position++]=data;
+		}
+
+		
+
+    }
+}
