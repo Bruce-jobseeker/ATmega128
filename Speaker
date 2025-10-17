@@ -1,0 +1,60 @@
+#define F_CPU 16000000L
+
+#include <avr/io.h>
+#include <util/delay.h>
+
+#define C4 262
+#define D4 294
+#define E4 330
+#define F4 349
+#define G4 392
+#define A4 440
+#define B4 494
+#define C5 523
+#define PAUSE 0
+#define PRESCALER 8
+
+const int melody[]={C4, D4, E4, F4, G4, A4, B4, C5, PAUSE};
+	
+void play_music(void)
+{
+	
+	int note;
+	if(PINC==0){
+		OCR1A=0;
+	}
+	else{
+	for(int i=0 ; i<8 ; i++){
+		
+		if((PINC >> i)==1){
+		note = melody[i];
+		}
+		
+		_delay_ms(10);
+	}
+	int icr_value = F_CPU / 2 / PRESCALER / note;
+	OCR1A = icr_value;
+	}
+	
+	
+}
+
+int main(void)
+{
+    /* Replace with your application code */
+	DDRB |= (1 << PORTB6);
+	DDRC = 0x00;
+	
+	TCCR1A |= (1 << COM1B0);
+	
+	TCCR1B |= (1 << CS11);
+	
+	TCCR1B |= (1 << WGM12);
+	
+	OCR1A=0;
+	
+    while (1) 
+    {
+		play_music();
+    }
+}
